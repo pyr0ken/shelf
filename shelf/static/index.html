@@ -393,6 +393,29 @@
         </div>
       </div>
 
+      <!-- Bookmarklet Quick Install Card -->
+      <div class="bg-gradient-to-r from-amber-500/10 via-indigo-500/10 to-cyan-500/10 border border-amber-500/30 rounded-2xl p-4.5 mb-6 shadow-lg">
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div class="flex items-center gap-3">
+            <span class="text-2xl shrink-0">⚡</span>
+            <div>
+              <h3 class="text-xs font-bold text-white">بوک‌مارک سریع با ۱ کلیک در گوگل کروم (Bookmarklet)</h3>
+              <p class="text-[11px] text-slate-300 mt-0.5 leading-relaxed">
+                دکمه روبرو را با ماوس بگیرید و داخل نوار بوک‌مارک‌های بالای کروم رها کنید (Drag & Drop). از این به بعد در هر کتابی بودید با یک کلیک صفحه‌اش در Shelf ذخیره می‌شود!
+              </p>
+            </div>
+          </div>
+          <a 
+            :href="bookmarkletHref"
+            title="این دکمه را با ماوس بکشید و در نوار بوک‌مارک کروم رها کنید"
+            onclick="if(event.target.tagName==='A'||event.target.parentElement.tagName==='A'){alert('💡 این دکمه را با ماوس بگیرید و به نوار بالای مرورگر (Bookmarks Bar) بکشید (Drag & Drop).'); return false;}"
+            class="px-3.5 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-black font-bold text-xs rounded-xl shadow-md shadow-amber-500/20 cursor-grab active:cursor-grabbing flex items-center gap-2 whitespace-nowrap select-none transition border border-amber-400 shrink-0">
+            <span>🔖</span>
+            <span>Save to Shelf (بکشید به نوار کروم)</span>
+          </a>
+        </div>
+      </div>
+
       <template x-if="bookmarks.length === 0">
         <div class="bg-surface border border-border rounded-2xl p-12 text-center">
           <span class="text-4xl block mb-3">📑</span>
@@ -581,6 +604,7 @@
         bookBookmarks: [],
         modalBmPage: 1,
         modalBmNote: '',
+        bookmarkletHref: `javascript:(function(){const m=location.href.match(/\\/api\\/books\\/(\\d+)\\/pdf(?:#page=(\\d+))?/);if(!m){alert('⚠️ این دکمه را در تب کتاب باز شده در کروم بزنید.');return;}const bookId=m[1];const hashPage=m[2]||(location.hash.match(/page=(\\d+)/)||[])[1]||'1';const page=prompt('🔖 شماره صفحه برای بوک‌مارک:',hashPage);if(!page)return;const note=prompt('📝 یادداشت برای این صفحه (اختیاری):','')||'';fetch('http://127.0.0.1:7788/api/bookmarks',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({book_id:parseInt(bookId),page_number:parseInt(page),title:'بوک‌مارک کروم',note:note})}).then(r=>r.json()).then(d=>alert('✓ صفحه '+page+' با موفقیت به Shelf اضافه شد!')).catch(e=>alert('❌ خطا: '+e));})();`,
 
         init() {
           this.initMarked();
