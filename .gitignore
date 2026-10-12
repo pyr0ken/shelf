@@ -1,0 +1,25 @@
+# Data & Local Cache
+data/
+*.db
+*.sqlite
+*.webp
+
+# Python & Virtualenv
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store

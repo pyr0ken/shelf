@@ -1,0 +1,8 @@
+pymupdf
+typer
+rich
+fastapi
+uvicorn
+pillow
+fastembed
+httpx
