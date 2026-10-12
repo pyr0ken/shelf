@@ -9,6 +9,9 @@
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <script>
     tailwind.config = {
       darkMode: 'class',
@@ -28,6 +31,10 @@
     }
   </script>
   <style>
+    body {
+      font-family: 'Vazirmatn', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
     /* Custom scrollbar */
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: #090a0f; }
@@ -37,45 +44,85 @@
     /* Typography & Markdown Prose */
     .prose {
       color: #cbd5e1;
-      font-size: 0.825rem;
-      line-height: 1.85;
+      font-size: 0.835rem;
+      line-height: 1.9;
     }
     
-    /* Auto RTL for Persian / Arabic text */
-    .prose p, .prose li, .prose h1, .prose h2, .prose h3, .prose h4 {
-      direction: auto;
-      text-align: start;
-      unicode-bidi: plaintext;
+    /* Native RTL support */
+    .prose[dir="rtl"] {
+      text-align: right;
+      direction: rtl;
     }
-    .prose p { margin-bottom: 0.85rem; }
+    .prose[dir="ltr"] {
+      text-align: left;
+      direction: ltr;
+    }
+    
+    .prose p { margin-bottom: 0.95rem; }
     
     .prose h1 { font-size: 1.25rem; font-weight: 700; color: #f8fafc; margin-top: 1.5rem; margin-bottom: 0.75rem; border-bottom: 1px solid #1e2230; padding-bottom: 0.35rem; }
-    .prose h2 { font-size: 1.05rem; font-weight: 700; color: #818cf8; margin-top: 1.35rem; margin-bottom: 0.5rem; }
-    .prose h3 { font-size: 0.925rem; font-weight: 600; color: #38bdf8; margin-top: 1.1rem; margin-bottom: 0.4rem; }
+    .prose h2 { font-size: 1.05rem; font-weight: 700; color: #818cf8; margin-top: 1.4rem; margin-bottom: 0.5rem; }
+    .prose h3 { font-size: 0.925rem; font-weight: 600; color: #38bdf8; margin-top: 1.15rem; margin-bottom: 0.4rem; }
     .prose h4 { font-size: 0.85rem; font-weight: 600; color: #94a3b8; margin-top: 0.85rem; margin-bottom: 0.35rem; }
 
-    .prose ul, .prose ol { margin-top: 0.5rem; margin-bottom: 0.85rem; padding-left: 1.25rem; }
-    .prose[dir="rtl"] ul, .prose[dir="rtl"] ol, .prose :dir(rtl) ul, .prose :dir(rtl) ol { padding-right: 1.25rem; padding-left: 0; }
-    .prose ul { list-style-type: disc; }
-    .prose ol { list-style-type: decimal; }
-    .prose li { margin-bottom: 0.35rem; }
+    /* Lists: padding-inline-start fixes detached bullets in RTL/LTR */
+    .prose ul {
+      list-style-type: disc;
+      margin: 0.75rem 0;
+      padding-inline-start: 1.5rem;
+      padding-inline-end: 0;
+    }
+    .prose ol {
+      list-style-type: decimal;
+      margin: 0.75rem 0;
+      padding-inline-start: 1.5rem;
+      padding-inline-end: 0;
+    }
+    .prose li {
+      margin-bottom: 0.45rem;
+      line-height: 1.85;
+    }
 
     .prose strong { color: #ffffff; font-weight: 600; }
     .prose em { color: #e2e8f0; font-style: italic; }
 
     /* Blockquotes & Callouts */
     .prose blockquote {
-      border-left: 3px solid #6366f1;
       background: rgba(99, 102, 241, 0.08);
-      padding: 0.65rem 1rem;
-      margin: 0.85rem 0;
-      border-radius: 0 0.5rem 0.5rem 0;
+      padding: 0.75rem 1rem;
+      margin: 1rem 0;
+      color: #cbd5e1;
+      border-inline-start: 3px solid #6366f1;
+      border-radius: 0.5rem;
+    }
+
+    /* Table styling */
+    .prose table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1.25rem 0;
+      border-radius: 0.75rem;
+      overflow: hidden;
+      border: 1px solid #1e2230;
+      font-size: 0.8rem;
+      direction: ltr !important;
+      text-align: left !important;
+    }
+    .prose th {
+      background: #141724;
+      color: #818cf8;
+      font-weight: 600;
+      padding: 0.65rem 0.85rem;
+      border-bottom: 1px solid #1e2230;
+      font-family: ui-monospace, SFMono-Regular, monospace;
+    }
+    .prose td {
+      padding: 0.65rem 0.85rem;
+      border-bottom: 1px solid rgba(30, 34, 48, 0.6);
       color: #cbd5e1;
     }
-    .prose blockquote:dir(rtl) {
-      border-left: none;
-      border-right: 3px solid #6366f1;
-      border-radius: 0.5rem 0 0 0.5rem;
+    .prose tr:hover td {
+      background: rgba(24, 27, 36, 0.5);
     }
 
     /* Code blocks - ALWAYS strict LTR */
@@ -273,9 +320,12 @@
       <!-- Answer Card -->
       <template x-if="ragResult">
         <div class="bg-surface border border-border rounded-2xl p-6 shadow-xl space-y-6">
-          <div>
-            <h3 class="text-xs font-mono text-indigo-400 uppercase tracking-wider mb-2">Answer:</h3>
-            <div class="prose text-xs text-slate-200 leading-relaxed" x-html="renderMarkdown(ragResult.answer)"></div>
+          <div :dir="isRTL(ragResult.answer) ? 'rtl' : 'ltr'">
+            <div class="flex items-center gap-2 mb-3">
+              <span class="w-2.5 h-2.5 rounded-full bg-indigo-500 shadow-sm shadow-indigo-500/50"></span>
+              <h3 class="text-xs font-mono text-indigo-400 uppercase tracking-wider" x-text="isRTL(ragResult.answer) ? 'پاسخ هوش مصنوعی (Answer):' : 'Answer:'"></h3>
+            </div>
+            <div class="prose text-xs text-slate-200 leading-relaxed" :dir="isRTL(ragResult.answer) ? 'rtl' : 'ltr'" x-html="renderMarkdown(ragResult.answer)"></div>
           </div>
 
           <!-- Sources -->
@@ -475,9 +525,25 @@
           }
         },
 
+        isRTL(text) {
+          if (!text) return false;
+          return /[\u0600-\u06FF]/.test(text);
+        },
+
         initMarked() {
           const renderer = new marked.Renderer();
-          renderer.code = function(code, lang) {
+          renderer.code = function(arg1, arg2) {
+            let code = '';
+            let lang = '';
+            if (typeof arg1 === 'object' && arg1 !== null) {
+              code = arg1.text || arg1.raw || '';
+              lang = arg1.lang || '';
+            } else {
+              code = String(arg1 || '');
+              lang = String(arg2 || '');
+            }
+
+            code = code.replace(/\n+$/, '');
             let highlighted = code;
             const validLang = lang && typeof hljs !== 'undefined' && hljs.getLanguage(lang) ? lang : null;
             if (typeof hljs !== 'undefined') {
@@ -498,7 +564,7 @@
             const displayLang = (lang || 'code').toUpperCase();
             const encoded = encodeURIComponent(code);
             return `
-              <div class="code-card my-4 rounded-xl border border-border overflow-hidden bg-[#0a0c14] shadow-md">
+              <div class="code-card my-4 rounded-xl border border-border overflow-hidden bg-[#0a0c14] shadow-md" dir="ltr">
                 <div class="flex items-center justify-between px-3.5 py-1.5 bg-[#121520] border-b border-border/80 text-[10px] font-mono text-slate-400">
                   <span class="text-indigo-400 font-semibold tracking-wider">${displayLang}</span>
                   <button 
@@ -507,31 +573,9 @@
                     Copy
                   </button>
                 </div>
-                <pre class="p-3.5 text-xs overflow-x-auto"><code class="hljs ${validLang ? 'language-' + validLang : ''}">${highlighted}</code></pre>
+                <pre class="p-3.5 text-xs overflow-x-auto m-0"><code class="hljs ${validLang ? 'language-' + validLang : ''}">${highlighted}</code></pre>
               </div>
             `;
-          };
-
-          renderer.table = function(header, body) {
-            return `
-              <div class="overflow-x-auto my-4 rounded-xl border border-border shadow-sm">
-                <table class="w-full text-xs text-left border-collapse bg-surface">
-                  <thead class="bg-[#141724] border-b border-border">${header}</thead>
-                  <tbody class="divide-y divide-border/60">${body}</tbody>
-                </table>
-              </div>
-            `;
-          };
-
-          renderer.tablerow = function(content) {
-            return `<tr class="hover:bg-surfaceHover/50 transition">${content}</tr>`;
-          };
-
-          renderer.tablecell = function(content, flags) {
-            const tag = flags.header ? 'th' : 'td';
-            const align = flags.align ? `text-${flags.align}` : 'text-left';
-            const weight = flags.header ? 'font-semibold text-indigo-300' : 'text-slate-200';
-            return `<${tag} class="px-3.5 py-2.5 ${align} ${weight} font-mono">${content}</${tag}>`;
           };
 
           marked.use({ renderer, gfm: true, breaks: true });
