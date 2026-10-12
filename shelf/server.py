@@ -86,7 +86,7 @@ def get_book_pdf_api(book_id: int):
     return FileResponse(
         str(filepath),
         media_type="application/pdf",
-        headers={"Content-Disposition": f'inline; filename="{filepath.name}"'}
+        headers={"Content-Disposition": "inline"}
     )
 
 @app.post("/api/books/{book_id}/open")
