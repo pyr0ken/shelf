@@ -14,7 +14,10 @@ from shelf.db import (
     get_all_books,
     get_book,
     get_categories,
-    update_reading_progress
+    update_reading_progress,
+    add_bookmark,
+    delete_bookmark,
+    get_bookmarks
 )
 from shelf.rag import generate_rag_answer, search_hybrid
 
@@ -32,6 +35,13 @@ class RagRequest(BaseModel):
 
 class OpenRequest(BaseModel):
     page: Optional[int] = None
+    reader: Optional[str] = None
+
+class BookmarkCreateRequest(BaseModel):
+    book_id: int
+    page_number: int
+    title: Optional[str] = None
+    note: Optional[str] = None
 
 @app.on_event("startup")
 def on_startup():
@@ -65,6 +75,20 @@ def get_cover_api(filename: str):
         raise HTTPException(status_code=404, detail="Cover not found")
     return FileResponse(str(cover_file), media_type="image/webp")
 
+@app.get("/api/books/{book_id}/pdf")
+def get_book_pdf_api(book_id: int):
+    book = get_book(book_id)
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    filepath = Path(book["filepath"])
+    if not filepath.exists():
+        raise HTTPException(status_code=404, detail="PDF file not found on disk")
+    return FileResponse(
+        str(filepath),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="{filepath.name}"'}
+    )
+
 @app.post("/api/books/{book_id}/open")
 def open_book_api(book_id: int, req: Optional[OpenRequest] = None):
     book = get_book(book_id)
@@ -75,7 +99,17 @@ def open_book_api(book_id: int, req: Optional[OpenRequest] = None):
     target_page = (req.page if req and req.page else None) or book["current_page"] or 1
     update_reading_progress(book_id, target_page)
 
+    # If Chrome requested explicitly
+    if req and req.reader == "chrome":
+        chrome_bins = ["google-chrome-stable", "google-chrome", "chromium"]
+        for b in chrome_bins:
+            if shutil.which(b):
+                subprocess.Popen([b, f"file://{filepath}#page={target_page}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                return {"status": "ok", "reader": b, "page": target_page}
+
     readers = [
+        ("google-chrome-stable", ["google-chrome-stable", f"file://{filepath}#page={target_page}"]),
+        ("google-chrome", ["google-chrome", f"file://{filepath}#page={target_page}"]),
         ("sioyek", ["sioyek", f"--page={target_page}", filepath]),
         ("zathura", ["zathura", "-P", str(target_page), filepath]),
         ("okular", ["okular", "-p", str(target_page), filepath]),
@@ -89,6 +123,27 @@ def open_book_api(book_id: int, req: Optional[OpenRequest] = None):
 
     subprocess.Popen(["xdg-open", filepath], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     return {"status": "ok", "reader": "xdg-open", "page": target_page}
+
+@app.get("/api/bookmarks")
+def list_bookmarks_api(book_id: Optional[int] = None):
+    return {"bookmarks": get_bookmarks(book_id=book_id)}
+
+@app.post("/api/bookmarks")
+def create_bookmark_api(req: BookmarkCreateRequest):
+    bm_id = add_bookmark(
+        book_id=req.book_id,
+        page_number=req.page_number,
+        title=req.title,
+        note=req.note
+    )
+    return {"status": "ok", "bookmark_id": bm_id}
+
+@app.delete("/api/bookmarks/{bookmark_id}")
+def delete_bookmark_api(bookmark_id: int):
+    success = delete_bookmark(bookmark_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Bookmark not found")
+    return {"status": "ok"}
 
 @app.post("/api/rag/ask")
 def ask_rag_api(req: RagRequest):

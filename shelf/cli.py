@@ -16,7 +16,10 @@ from shelf.db import (
     get_all_books,
     get_book,
     get_categories,
-    update_reading_progress
+    update_reading_progress,
+    add_bookmark,
+    delete_bookmark,
+    get_bookmarks
 )
 from shelf.scanner import scan_single_book
 from shelf.rag import index_book_rag, search_hybrid, generate_rag_answer
@@ -229,9 +232,10 @@ def ask(
 @app.command("open-book")
 def open_book(
     book_id: int = typer.Argument(..., help="Book ID to open"),
-    page: Optional[int] = typer.Option(None, "--page", "-p", help="Page number to jump to")
+    page: Optional[int] = typer.Option(None, "--page", "-p", help="Page number to jump to"),
+    chrome: bool = typer.Option(False, "--chrome", help="Force open inside Google Chrome")
 ):
-    """Open book in desktop reader (Sioyek, Zathura, or default) and track progress."""
+    """Open book in desktop reader or Chrome and track progress."""
     init_db()
     b = get_book(book_id)
     if not b:
@@ -244,8 +248,18 @@ def open_book(
     console.print(f"[green]Opening '{b['title']}' at page {target_page}...[/green]")
     update_reading_progress(book_id, target_page)
 
+    if chrome:
+        chrome_bins = ["google-chrome-stable", "google-chrome", "chromium"]
+        for cb in chrome_bins:
+            if shutil.which(cb):
+                subprocess.Popen([cb, f"file://{filepath}#page={target_page}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                console.print(f"[cyan]Opened inside {cb} at page {target_page}.[/cyan]")
+                return
+
     # Detect installed reader
     readers = [
+        ("google-chrome-stable", ["google-chrome-stable", f"file://{filepath}#page={target_page}"]),
+        ("google-chrome", ["google-chrome", f"file://{filepath}#page={target_page}"]),
         ("sioyek", ["sioyek", f"--page={target_page}", filepath]),
         ("zathura", ["zathura", f"-P", str(target_page), filepath]),
         ("okular", ["okular", f"-p", str(target_page), filepath]),
@@ -263,6 +277,67 @@ def open_book(
     if not launched:
         subprocess.Popen(["xdg-open", filepath], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         console.print("[cyan]Launched with default system viewer.[/cyan]")
+
+bookmark_app = typer.Typer(help="Manage bookmarked pages", no_args_is_help=True)
+app.add_typer(bookmark_app, name="bookmark")
+
+@bookmark_app.command("add")
+def bm_add(
+    book_id: int = typer.Argument(..., help="Book ID"),
+    page: int = typer.Argument(..., help="Page number to bookmark"),
+    title: Optional[str] = typer.Option(None, "--title", "-t", help="Bookmark title or section"),
+    note: Optional[str] = typer.Option(None, "--note", "-n", help="Note or reason for bookmark")
+):
+    """Add or update a bookmark for a specific book page."""
+    init_db()
+    b = get_book(book_id)
+    if not b:
+        console.print(f"[red]Book ID {book_id} not found.[/red]")
+        raise typer.Exit(1)
+    bm_id = add_bookmark(book_id, page, title, note)
+    console.print(f"[bold green]✓ Bookmarked page {page} of '{b['title']}' (ID: {bm_id})[/bold green]")
+
+@bookmark_app.command("list")
+def bm_list(
+    book_id: Optional[int] = typer.Option(None, "--book-id", "-b", help="Filter by book ID")
+):
+    """List saved bookmarks."""
+    init_db()
+    bms = get_bookmarks(book_id=book_id)
+    if not bms:
+        console.print("[yellow]No bookmarks found. Use `shelf bookmark add <id> <page>` to save pages.[/yellow]")
+        return
+
+    table = Table(title="Saved Bookmarks", header_style="bold cyan")
+    table.add_column("ID", justify="right", style="cyan")
+    table.add_column("Book", style="bold white")
+    table.add_column("Page", justify="right", style="yellow")
+    table.add_column("Title / Section", style="green")
+    table.add_column("Note", style="dim")
+    table.add_column("Date", style="dim magenta")
+
+    for bm in bms:
+        table.add_row(
+            str(bm["id"]),
+            bm["book_title"][:40],
+            str(bm["page_number"]),
+            bm["title"] or "-",
+            bm["note"] or "-",
+            str(bm["created_at"])[:16]
+        )
+    console.print(table)
+
+@bookmark_app.command("rm")
+def bm_rm(
+    bookmark_id: int = typer.Argument(..., help="Bookmark ID to remove")
+):
+    """Delete a saved bookmark."""
+    init_db()
+    ok = delete_bookmark(bookmark_id)
+    if ok:
+        console.print(f"[green]✓ Bookmark {bookmark_id} deleted.[/green]")
+    else:
+        console.print(f"[red]Bookmark {bookmark_id} not found.[/red]")
 
 @app.command()
 def serve(

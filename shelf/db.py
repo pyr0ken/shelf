@@ -49,8 +49,19 @@ def init_db(db_path: Path = DB_PATH):
         embedding BLOB
     );
 
+    CREATE TABLE IF NOT EXISTS bookmarks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        book_id INTEGER NOT NULL REFERENCES books(id) ON DELETE CASCADE,
+        page_number INTEGER NOT NULL,
+        title TEXT,
+        note TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(book_id, page_number)
+    );
+
     CREATE INDEX IF NOT EXISTS idx_chunks_book_id ON chunks(book_id);
     CREATE INDEX IF NOT EXISTS idx_chunks_page ON chunks(book_id, page_number);
+    CREATE INDEX IF NOT EXISTS idx_bookmarks_book_id ON bookmarks(book_id);
 
     -- Full-Text Search on books
     CREATE VIRTUAL TABLE IF NOT EXISTS books_fts USING fts5(
@@ -328,6 +339,60 @@ def search_chunks_fts(
     sql += " ORDER BY rank LIMIT ?"
     params.append(limit)
 
+    cur.execute(sql, params)
+    rows = cur.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+def add_bookmark(
+    book_id: int,
+    page_number: int,
+    title: Optional[str] = None,
+    note: Optional[str] = None,
+    db_path: Path = DB_PATH
+) -> int:
+    conn = get_connection(db_path)
+    cur = conn.cursor()
+    cur.execute("""
+    INSERT INTO bookmarks (book_id, page_number, title, note)
+    VALUES (?, ?, ?, ?)
+    ON CONFLICT(book_id, page_number) DO UPDATE SET
+        title = COALESCE(excluded.title, bookmarks.title),
+        note = COALESCE(excluded.note, bookmarks.note),
+        created_at = CURRENT_TIMESTAMP
+    RETURNING id;
+    """, (book_id, page_number, title, note))
+    bookmark_id = cur.fetchone()[0]
+    conn.commit()
+    conn.close()
+    return bookmark_id
+
+def delete_bookmark(bookmark_id: int, db_path: Path = DB_PATH) -> bool:
+    conn = get_connection(db_path)
+    cur = conn.cursor()
+    cur.execute("DELETE FROM bookmarks WHERE id = ?", (bookmark_id,))
+    rows_affected = cur.rowcount
+    conn.commit()
+    conn.close()
+    return rows_affected > 0
+
+def get_bookmarks(
+    book_id: Optional[int] = None,
+    db_path: Path = DB_PATH
+) -> List[Dict[str, Any]]:
+    conn = get_connection(db_path)
+    cur = conn.cursor()
+    sql = """
+    SELECT bm.id, bm.book_id, bm.page_number, bm.title, bm.note, bm.created_at,
+           b.title as book_title, b.category, b.cover_path, b.filepath
+    FROM bookmarks bm
+    JOIN books b ON bm.book_id = b.id
+    """
+    params: List[Any] = []
+    if book_id is not None:
+        sql += " WHERE bm.book_id = ?"
+        params.append(book_id)
+    sql += " ORDER BY bm.created_at DESC"
     cur.execute(sql, params)
     rows = cur.fetchall()
     conn.close()

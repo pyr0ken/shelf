@@ -178,6 +178,11 @@
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
             Ask RAG
           </button>
+          <button @click="tab = 'bookmarks'; fetchBookmarks()" :class="tab === 'bookmarks' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'" class="px-3.5 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path></svg>
+            Bookmarks
+            <span class="bg-indigo-900/80 text-indigo-300 text-[10px] px-1.5 py-0.2 rounded-full font-mono ml-0.5" x-text="bookmarks.length" x-show="bookmarks.length > 0"></span>
+          </button>
         </nav>
       </div>
 
@@ -344,11 +349,26 @@
                           <span class="text-slate-400 text-[10px] hidden sm:inline" x-text="'(' + s.chapter_title + ')'"></span>
                         </template>
                       </div>
-                      <button 
-                        @click="launchBook(s.book_id, s.page_number)" 
-                        class="px-2.5 py-1 bg-surface border border-border hover:border-indigo-500 text-[10px] font-mono rounded text-slate-300 hover:text-white transition flex items-center gap-1">
-                        Open Page ↗
-                      </button>
+                      <div class="flex items-center gap-1.5">
+                        <button 
+                          @click="openPdfInChrome(s.book_id, s.page_number)" 
+                          title="Open in Chrome at this page"
+                          class="px-2 py-1 bg-cyan-950/70 border border-cyan-800/80 hover:border-cyan-500 text-[10px] font-mono rounded text-cyan-300 hover:text-white transition flex items-center gap-1">
+                          Chrome p.<span x-text="s.page_number"></span> ↗
+                        </button>
+                        <button 
+                          @click="quickBookmark(s.book_id, s.page_number, s.book_title + ' - p.' + s.page_number)" 
+                          title="Bookmark this page"
+                          class="px-2 py-1 bg-surface border border-border hover:border-amber-500 text-[10px] font-mono rounded text-slate-300 hover:text-amber-400 transition flex items-center gap-1">
+                          🔖
+                        </button>
+                        <button 
+                          @click="launchBook(s.book_id, s.page_number)" 
+                          title="Open in desktop reader"
+                          class="px-2 py-1 bg-surface border border-border hover:border-indigo-500 text-[10px] font-mono rounded text-slate-400 hover:text-white transition flex items-center gap-1">
+                          Reader ↗
+                        </button>
+                      </div>
                     </div>
                     <p class="text-slate-400 text-[11px] font-mono leading-relaxed bg-black/20 p-2.5 rounded border border-white/5" x-text="s.content"></p>
                   </div>
@@ -359,6 +379,68 @@
         </div>
       </template>
 
+    </div>
+
+    <!-- View 3: Bookmarks View -->
+    <div x-show="tab === 'bookmarks'" x-transition class="max-w-4xl mx-auto">
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <h2 class="text-base font-bold text-white flex items-center gap-2">
+            <span class="text-amber-400">🔖</span>
+            Saved Bookmarks (<span x-text="bookmarks.length"></span>)
+          </h2>
+          <p class="text-xs text-slate-400 mt-0.5">Quickly jump back to saved pages across all your technical books in Chrome or your reader.</p>
+        </div>
+      </div>
+
+      <template x-if="bookmarks.length === 0">
+        <div class="bg-surface border border-border rounded-2xl p-12 text-center">
+          <span class="text-4xl block mb-3">📑</span>
+          <h3 class="text-sm font-semibold text-slate-200">No bookmarks saved yet</h3>
+          <p class="text-xs text-slate-500 mt-1">Bookmark any page from the book details modal or directly from AI answers.</p>
+        </div>
+      </template>
+
+      <div class="space-y-3">
+        <template x-for="bm in bookmarks" :key="bm.id">
+          <div class="bg-surface border border-border hover:border-indigo-500/50 rounded-xl p-4 transition flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3.5 min-w-0">
+              <div class="w-10 h-14 bg-surfaceHover rounded-lg overflow-hidden shrink-0 border border-border/80">
+                <template x-if="bm.cover_path">
+                  <img :src="'/api/covers/' + bm.cover_path" class="w-full h-full object-cover" />
+                </template>
+              </div>
+              <div class="min-w-0">
+                <div class="flex items-center gap-2">
+                  <span class="text-[10px] font-mono text-indigo-400" x-text="bm.category"></span>
+                  <span class="bg-amber-500/20 text-amber-300 font-mono text-[10px] px-1.5 py-0.5 rounded font-bold" x-text="'Page ' + bm.page_number"></span>
+                </div>
+                <h3 class="text-xs font-semibold text-slate-200 truncate mt-0.5" x-text="bm.book_title"></h3>
+                <p class="text-[11px] text-slate-400 mt-1 truncate" x-text="bm.note || bm.title || 'No note'"></p>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2 shrink-0">
+              <button 
+                @click="openPdfInChrome(bm.book_id, bm.page_number)" 
+                class="bg-cyan-600/90 hover:bg-cyan-500 text-white font-medium text-xs px-3 py-1.5 rounded-lg transition flex items-center gap-1 shadow">
+                Open in Chrome ↗
+              </button>
+              <button 
+                @click="launchBook(bm.book_id, bm.page_number)" 
+                class="bg-surfaceHover border border-border hover:border-indigo-500 text-slate-300 hover:text-white text-xs px-3 py-1.5 rounded-lg transition">
+                Reader ↗
+              </button>
+              <button 
+                @click="removeBookmark(bm.id)" 
+                class="text-slate-500 hover:text-red-400 p-1.5 transition text-xs" 
+                title="Delete Bookmark">
+                ✕
+              </button>
+            </div>
+          </div>
+        </template>
+      </div>
     </div>
 
   </main>
@@ -395,24 +477,54 @@
             </div>
           </div>
 
-          <div class="flex gap-3 mt-4">
+          <div class="flex gap-2.5 mt-4">
+            <button 
+              @click="openPdfInChrome(activeBook.id, activeBook.current_page || 1)" 
+              class="bg-cyan-600 hover:bg-cyan-500 text-white font-medium text-xs px-3.5 py-2.5 rounded-xl transition flex items-center gap-1.5 shadow-lg shadow-cyan-600/20">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+              Open in Chrome
+            </button>
             <button 
               @click="launchBook(activeBook.id)" 
-              class="bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs px-4 py-2.5 rounded-xl transition flex items-center gap-1.5 shadow-lg shadow-indigo-600/20">
+              class="bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs px-3.5 py-2.5 rounded-xl transition flex items-center gap-1.5 shadow-lg shadow-indigo-600/20">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
-              Open in System Reader
+              Desktop Reader
             </button>
             <button 
               @click="askAboutBook(activeBook)" 
-              class="bg-surfaceHover border border-border hover:border-slate-600 text-slate-200 text-xs px-4 py-2.5 rounded-xl transition flex items-center gap-1.5">
-              Ask AI about Book
+              class="bg-surfaceHover border border-border hover:border-slate-600 text-slate-200 text-xs px-3 py-2.5 rounded-xl transition flex items-center gap-1.5">
+              Ask AI
             </button>
           </div>
         </div>
       </div>
 
+      <!-- Bookmarks for this Book -->
+      <div class="border-t border-border pt-3">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-mono text-amber-400 font-semibold flex items-center gap-1">
+            <span>🔖</span> Bookmarks (<span x-text="bookBookmarks.length"></span>)
+          </span>
+          <form @submit.prevent="addModalBookmark()" class="flex items-center gap-1.5">
+            <input type="number" min="1" :max="activeBook?.page_count" x-model="modalBmPage" placeholder="Page" class="w-16 bg-surfaceHover border border-border rounded px-2 py-1 text-[11px] text-white font-mono" />
+            <input type="text" x-model="modalBmNote" placeholder="Note (optional)" class="w-36 bg-surfaceHover border border-border rounded px-2 py-1 text-[11px] text-white" />
+            <button type="submit" class="bg-amber-600 hover:bg-amber-500 text-white text-[11px] px-2.5 py-1 rounded font-medium transition cursor-pointer">Bookmark</button>
+          </form>
+        </div>
+        <div class="flex flex-wrap gap-2 mb-3" x-show="bookBookmarks.length > 0">
+          <template x-for="bm in bookBookmarks" :key="bm.id">
+            <div class="bg-surfaceHover border border-border rounded-lg px-2.5 py-1 text-[11px] flex items-center gap-2">
+              <span class="font-bold text-amber-400 font-mono" x-text="'p.' + bm.page_number"></span>
+              <span class="text-slate-300 truncate max-w-[140px]" x-text="bm.note || 'Page ' + bm.page_number"></span>
+              <button @click="openPdfInChrome(bm.book_id, bm.page_number)" class="text-cyan-400 hover:text-white cursor-pointer" title="Open in Chrome">↗</button>
+              <button @click="removeBookmark(bm.id)" class="text-slate-500 hover:text-red-400 cursor-pointer" title="Delete">✕</button>
+            </div>
+          </template>
+        </div>
+      </div>
+
       <!-- Table of Contents Section -->
-      <div class="flex-1 overflow-y-auto border-t border-border pt-4">
+      <div class="flex-1 overflow-y-auto border-t border-border pt-3">
         <h3 class="text-xs font-mono text-slate-400 uppercase tracking-wider mb-2">Table of Contents</h3>
         <template x-if="activeBookToc.length === 0">
           <p class="text-xs text-slate-500 italic">No bookmarks/TOC found in this file.</p>
@@ -420,11 +532,23 @@
         <div class="space-y-1">
           <template x-for="item in activeBookToc" :key="item.title + item.page">
             <div 
-              @click="launchBook(activeBook.id, item.page)"
-              class="flex items-center justify-between text-xs py-1.5 px-2 rounded hover:bg-surfaceHover cursor-pointer text-slate-300 hover:text-white transition"
+              class="flex items-center justify-between text-xs py-1.5 px-2 rounded hover:bg-surfaceHover text-slate-300 hover:text-white transition group"
               :style="'padding-left: ' + (item.level * 12) + 'px'">
-              <span class="truncate pr-4" x-text="item.title"></span>
-              <span class="font-mono text-[10px] text-slate-500 shrink-0" x-text="'p. ' + item.page"></span>
+              <span @click="openPdfInChrome(activeBook.id, item.page)" class="truncate pr-4 cursor-pointer flex-1 hover:text-cyan-300 transition" x-text="item.title"></span>
+              <div class="flex items-center gap-1.5 shrink-0">
+                <span class="font-mono text-[10px] text-slate-500" x-text="'p. ' + item.page"></span>
+                <button 
+                  @click.stop="openPdfInChrome(activeBook.id, item.page)" 
+                  class="text-[10px] px-1.5 py-0.5 rounded bg-surface border border-border text-cyan-400 hover:text-white opacity-0 group-hover:opacity-100 transition cursor-pointer">
+                  Chrome ↗
+                </button>
+                <button 
+                  @click.stop="quickBookmark(activeBook.id, item.page, item.title)" 
+                  class="text-[10px] px-1.5 py-0.5 rounded bg-surface border border-border text-amber-400 hover:text-white opacity-0 group-hover:opacity-100 transition cursor-pointer"
+                  title="Bookmark section">
+                  🔖
+                </button>
+              </div>
             </div>
           </template>
         </div>
@@ -452,10 +576,17 @@
         ragLoading: false,
         ragResult: null,
 
+        // Bookmarks state
+        bookmarks: [],
+        bookBookmarks: [],
+        modalBmPage: 1,
+        modalBmNote: '',
+
         init() {
           this.initMarked();
           this.fetchCategories();
           this.fetchBooks();
+          this.fetchBookmarks();
 
           // Keyboard shortcut Ctrl+K
           window.addEventListener('keydown', (e) => {
@@ -482,9 +613,61 @@
           this.books = data.books || [];
         },
 
+        async fetchBookmarks() {
+          const res = await fetch('/api/bookmarks');
+          const data = await res.json();
+          this.bookmarks = data.bookmarks || [];
+        },
+
+        async fetchBookBookmarks(bookId) {
+          const res = await fetch(`/api/bookmarks?book_id=${bookId}`);
+          const data = await res.json();
+          this.bookBookmarks = data.bookmarks || [];
+        },
+
+        openPdfInChrome(bookId, page = 1) {
+          const targetPage = page || 1;
+          window.open(`/api/books/${bookId}/pdf#page=${targetPage}`, '_blank');
+        },
+
+        async quickBookmark(bookId, page, title = '', note = '') {
+          await fetch('/api/bookmarks', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              book_id: bookId,
+              page_number: page,
+              title: title,
+              note: note
+            })
+          });
+          this.fetchBookmarks();
+          if (this.activeBook && this.activeBook.id === bookId) {
+            this.fetchBookBookmarks(bookId);
+          }
+        },
+
+        async addModalBookmark() {
+          if (!this.activeBook) return;
+          const page = parseInt(this.modalBmPage) || 1;
+          await this.quickBookmark(this.activeBook.id, page, `Bookmark p.${page}`, this.modalBmNote);
+          this.modalBmNote = '';
+        },
+
+        async removeBookmark(bookmarkId) {
+          await fetch(`/api/bookmarks/${bookmarkId}`, { method: 'DELETE' });
+          this.fetchBookmarks();
+          if (this.activeBook) {
+            this.fetchBookBookmarks(this.activeBook.id);
+          }
+        },
+
         openModal(book) {
           this.activeBook = book;
           this.activeBookToc = book.toc_json ? JSON.parse(book.toc_json) : [];
+          this.modalBmPage = book.current_page || 1;
+          this.modalBmNote = '';
+          this.fetchBookBookmarks(book.id);
         },
 
         async launchBook(bookId, page = null) {
