@@ -14,6 +14,17 @@ Shelf is an offline-first technical book management system and hybrid RAG assist
 - **Dual Mode (Optional LLM):** Use AI synthesis with OpenAI-compatible endpoints or ultra-fast raw passage retrieval (<80ms) without any LLM.
 - **Raycast/Linear Dark Web UI:** Minimalist web dashboard built with FastAPI, Tailwind CSS, and Alpine.js.
 
+## Screenshots
+
+### Library Dashboard
+![Shelf Library Dashboard](docs/images/library-dashboard.png)
+
+### Grounded RAG Search & Citations
+![Shelf Ask RAG](docs/images/ask-rag.png)
+
+### Book Details & Reader Launch
+![Shelf Book Detail Modal](docs/images/book-detail-modal.png)
+
 ## Installation
 
 ```bash
